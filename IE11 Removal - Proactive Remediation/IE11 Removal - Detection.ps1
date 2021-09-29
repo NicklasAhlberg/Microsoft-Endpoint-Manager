@@ -14,7 +14,7 @@ $IEexist = Get-WindowsCapability -Online -Name Browser.InternetExplorer~~~~0.0.1
 
 if ($IEexist.State -eq 'Installed')
 {
-	Write-Host "IE11 is installed and should be remidiated"
+	Write-Host "IE11 is installed and should be remediated"
 	Exit 1
 }
 
