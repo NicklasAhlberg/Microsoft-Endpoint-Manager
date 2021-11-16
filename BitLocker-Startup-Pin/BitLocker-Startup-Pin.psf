@@ -1,0 +1,117 @@
+$BitlockerStartupPinTool_Load = {
+	
+	# Custom logo
+	$logoExist = Test-Path '.\logo.png'
+	if ($logoExist)
+	{
+		$picturebox1.Image = [System.Drawing.Image]::FromFile('.\Logo.png')
+	}
+	
+	# Make sure TPM and startup Pin is allowed
+	if ((Get-ItemPropertyValue HKLM:\SOFTWARE\Policies\Microsoft\FVE -Name UseTPMPin -ErrorAction Ignore) -gt '0')
+	{
+		#Write-Log "TPM and startup Pin is allowed"
+		$buttonOK.Enabled = $true
+	}
+	
+	else
+	{
+		$labelPleaseProvideAPin6di.ForeColor = 'Red'; $labelPleaseProvideAPin6di.Text = "TPM and Startup Pin is not allowed"
+		#Write-Log "TPM and startup Pin is not allowed"
+	}
+	
+	# Get enhanced pin
+	$global:enhancedPinEnabled = Get-ItemPropertyValue HKLM:\SOFTWARE\Policies\Microsoft\FVE -Name UseEnhancedPin -ErrorAction SilentlyContinue
+	if ($enhancedPinEnabled -gt '0') { $global:maskedPinCharacter = 'C' }
+	
+	else { $global:maskedPinCharacter = '0' }
+	
+	# Get minimum allowed pin characters
+	$global:minimumPinCharacters = Get-ItemPropertyValue HKLM:\SOFTWARE\Policies\Microsoft\FVE -Name MinimumPIN -ErrorAction SilentlyContinue
+	$global:minimumPinCharacters = '{0:x}' -f $minimumPinCharacters # Convert to dec
+	
+	# Set masked textbox properties
+	$global:dynPinCharacter = "$maskedPinCharacter" * $global:minimumPinCharacters
+	$maskedtextbox1.Mask = $dynPinCharacter
+	$maskedtextbox2.Mask = $dynPinCharacter
+	
+	$labelPleaseProvideAPin6di.Text = "Please set a pin (minimum $minimumPinCharacters characters)" # Set label
+}
+
+# Create log directory, file and function
+$logFolderLocation = 'C:\ProgramData\Microsoft\IntuneManagementExtension\Logs'
+if (!(Test-Path $logFolderLocation) -eq $true) { New-Item -Path $logFolderLocation -ItemType Dir -ErrorAction Ignore }
+$LogFile = "$logFolderLocation\Bitlocker-Startup-Pin.log"
+
+Function Write-Log
+{
+	param (
+		$Log
+	)
+	
+	$TimeStamp = "[{0:MM/dd/yy} {0:HH:mm:ss}]" -f (Get-Date)
+	Add-Content $LogFile  "$TimeStamp - $Log"
+}
+
+Write-Log -Log "Tool started"
+
+
+$maskedtextbox1_MaskInputRejected = [System.Windows.Forms.MaskInputRejectedEventHandler]{
+
+	if ($dynPinCharacter -gt '1')
+	{
+		$labelPleaseProvideAPin6di.Text = "Must use numeric digits (0-9, a-z, special characters are allowed)"
+	}
+	
+	else
+	{
+		$labelPleaseProvideAPin6di.Text = "Must use numeric digits (0-9)"
+	}
+}
+
+# OK button-click
+$buttonOK_Click = {
+	
+	if ($maskedtextbox2.Text -eq $maskedtextbox1.Text)
+	{
+		try
+		{
+			$securePin = ConvertTo-SecureString $maskedtextbox2.Text -AsPlainText -Force # Convert pin to a secure string
+			Add-BitLockerKeyProtector -MountPoint $env:SystemDrive -Pin $securePin -TpmAndPinProtector # Add the pin as a BitlockerKeyProtector
+			$TPMPIN = Get-BitLockerVolume -MountPoint $env:SystemDrive | select -ExpandProperty KeyProtector | where { $_.KeyProtectorType -eq 'tpmpin' }
+			
+			if ($TPMPIN)
+			{
+				$labelPleaseProvideAPin6di.ForeColor = 'Green'; $labelPleaseProvideAPin6di.Text = "Pin has been successfully set. Use it at next reboot"
+				Write-Log -Log "Pin has been successfully set"
+				$maskedtextbox1.ReadOnly = $true; $maskedtextbox2.ReadOnly = $true # Make textboxes read only after pin has been successfully set
+				$buttonExit.Visible = $true;  $buttonOK.Visible = $false # Show the exit button
+			}
+		}
+		
+		catch
+		{
+			$labelPleaseProvideAPin6di.Text = "$_.Exception.Message"; $labelPleaseProvideAPin6di.ForeColor = 'Red'
+			Write-Log -Log "Setting pin failed with below error"
+			Write-Log -Log "$_.Exception.Message"
+		}
+		
+		else
+		{
+			$labelPleaseProvideAPin6di.ForeColor = 'Red'; $labelPleaseProvideAPin6di.Text = "Pin does not match"
+		}
+	}
+}
+
+$buttonExit_Click={
+	#TODO: Place custom script here
+	$this.Parent.Close()
+}
+$maskedtextbox1_Click={
+	$maskedtextbox1.Text = $null
+}
+
+$maskedtextbox2_Click={
+	$maskedtextbox2.Text = $null
+	
+}
