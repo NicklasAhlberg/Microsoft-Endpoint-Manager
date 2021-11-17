@@ -9,28 +9,41 @@
 	===========================================================================
 	.DESCRIPTION
 		Use this script in Proactive Remediation to detect wether a Bitlocker startup pin has been set to the device or not.
-
+	.WARRANTY
+		The tool is provided "AS IS" with no warranties
 #>
 
-# Get Bitlocker status
-$BitLocker = Get-BitLockerVolume -MountPoint $env:SystemDrive
-if ($BitLocker.VolumeStatus -ne 'FullyDecrypted')
+# Make sure the BitLocker Startup Pin Tool is not already running (overlapping schedule)
+$bitLockerToolProcess = Get-Process -Name Bitlocker-Startup-Pin-Tool
+if (! $bitLockerToolProcess)
 {
-	if ($BitLocker.KeyProtector.KeyProtectorType -notcontains 'TPMPin')
+	
+	# Get Bitlocker status
+	$BitLocker = Get-BitLockerVolume -MountPoint $env:SystemDrive
+	if ($BitLocker.VolumeStatus -ne 'FullyDecrypted')
 	{
-		Write-Host "OS-disk is encrypted but startup pin was not found. Remediation is needed"
-		Exit 1
+		if ($BitLocker.KeyProtector.KeyProtectorType -notcontains 'TPMPin')
+		{
+			Write-Host "OS-disk is encrypted but startup pin was not found. Remediation is needed"
+			Exit 1
+		}
+		
+		else
+		{
+			Write-Host "OS-disk is encrypted and startup pin was found. No need to remediate"
+			Exit 0
+		}
+		
 	}
 	
 	else
 	{
-		Write-Host "OS-disk is encrypted and startup pin was found. No need to remediate"
-		Exit 0
+		Exit 0 # Exit if Bitlocker is not enabled on the device
 	}
-	
 }
 
 else
 {
-	Exit 0
+	Exit 0 # Exit if the tool process is already running
 }
+	

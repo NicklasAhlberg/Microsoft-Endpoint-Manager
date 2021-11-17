@@ -9,6 +9,8 @@
 	===========================================================================
 	.DESCRIPTION
 		Use this script in Proactive Remediation to download the tool from an Azure Storage account
+	.WARRANTY
+		The tool is provided "AS IS" with no warranties
 #>
 
 # Create log directory, file and function
