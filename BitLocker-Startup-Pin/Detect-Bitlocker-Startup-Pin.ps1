@@ -14,7 +14,7 @@
 #>
 
 # Make sure the BitLocker Startup Pin Tool is not already running (overlapping schedule)
-$bitLockerToolProcess = Get-Process -Name Bitlocker-Startup-Pin-Tool
+$bitLockerToolProcess = Get-Process -Name Bitlocker-Startup-Pin-Tool -ErrorAction SilentlyContinue
 if (! $bitLockerToolProcess)
 {
 	
