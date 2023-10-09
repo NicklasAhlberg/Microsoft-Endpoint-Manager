@@ -3,7 +3,7 @@
 	===========================================================================
 	 Created on:   	2021-11-13
 	 Created by:   	Nicklas Ahlberg
-	 Organization: 	nicklasahlberg.se
+	 Organization: 	rockenroll.tech
 	 Filename:     	Detect-Bitlocker-Startup-Pin.ps1
 	 Version:       1.0.0.1
 	===========================================================================
